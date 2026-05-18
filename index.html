@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>战术卡牌生成器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei",sans-serif;background:#0d0d0d;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.header{text-align:center;padding:18px 0 10px;font-size:20px;font-weight:700;color:#ffb300;background:#1a1a1a;width:100%}
+.steps{display:flex;justify-content:center;gap:6px;padding:14px 12px 10px;width:100%;max-width:520px}
+.step-dot{width:32px;height:32px;border-radius:50%;background:#333;color:#666;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:.3s}
+.step-dot.active{background:#a855f7;color:#fff}
+.step-dot.done{background:#22c55e;color:#fff}
+.step-line{width:24px;height:3px;background:#333;align-self:center;border-radius:2px;transition:.3s}
+.step-line.done{background:#22c55e}
+.container{width:100%;max-width:520px;padding:0 16px 24px}
+.panel{display:none}
+.panel.active{display:block}
+.label{font-size:14px;color:#aaa;margin-bottom:8px;font-weight:700}
+.options{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.opt-btn{padding:10px 18px;border-radius:8px;border:2px solid #333;background:#1e1e1e;color:#ccc;font-size:14px;font-weight:700;cursor:pointer;transition:.2s}
+.opt-btn:hover{border-color:#a855f7;color:#fff}
+.opt-btn.selected{border-color:#a855f7;background:#a855f7;color:#fff}
+.upload-area{border:2px dashed #333;border-radius:10px;padding:20px;text-align:center;margin-bottom:12px;cursor:pointer;transition:.2s;position:relative}
+.upload-area:hover{border-color:#a855f7}
+.upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-area .icon{font-size:28px;margin-bottom:6px}
+.upload-area .txt{font-size:13px;color:#666}
+.upload-area .fname{font-size:12px;color:#a855f7;margin-top:4px}
+.preview-img{max-width:100%;max-height:180px;border-radius:6px;margin-top:8px;display:none}
+.note-input{width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;resize:none;margin-bottom:16px;font-family:inherit}
+.note-input:focus{outline:none;border-color:#a855f7}
+.title-input{width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:12px;color:#ffdd57;font-size:18px;font-weight:700;text-align:center;margin-bottom:16px;font-family:inherit}
+.title-input:focus{outline:none;border-color:#a855f7}
+.knowledge-input{width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 12px;color:#aaa;font-size:12px;resize:none;margin-bottom:16px;font-family:inherit}
+.knowledge-input:focus{outline:none;border-color:#a855f7}
+.btn-row{display:flex;gap:10px;margin-top:16px}
+.btn{flex:1;padding:12px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;transition:.2s}
+.btn-prev{background:#333;color:#aaa}
+.btn-prev:hover{background:#444;color:#fff}
+.btn-next{background:#a855f7;color:#fff}
+.btn-next:hover{background:#9333ea}
+.btn-next:disabled{background:#333;color:#555;cursor:not-allowed}
+.btn-gen{background:#22c55e;color:#fff}
+.btn-gen:hover{background:#16a34a}
+.btn-gen:disabled{background:#333;color:#555;cursor:not-allowed}
+.summary{background:#1e1e1e;border-radius:10px;padding:16px;border:1px solid #333;margin-bottom:16px}
+.summary-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #2a2a2a}
+.summary-row:last-child{border:none}
+.summary-row .k{color:#666}
+.summary-row .v{color:#fff;font-weight:700}
+.summary-imgs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.summary-imgs img{width:100%;border-radius:6px;border:1px solid #333}
+</style>
+</head>
+<body>
+<div class="header">🎯 战术卡牌生成器</div>
+<div class="steps" id="stepsBar"></div>
+<div class="container">
+
+  <!-- 步骤1：选择地图 -->
+  <div class="panel active" data-step="1">
+    <div class="label">选择地图</div>
+    <div class="options" id="mapOptions"></div>
+    <div class="btn-row">
+      <button class="btn btn-next" onclick="nextStep()" disabled>下一步</button>
+    </div>
+  </div>
+
+  <!-- 步骤2：选择队伍 -->
+  <div class="panel" data-step="2">
+    <div class="label">选择队伍</div>
+    <div class="options" id="teamOptions"></div>
+    <div class="btn-row">
+      <button class="btn btn-prev" onclick="prevStep()">上一步</button>
+      <button class="btn btn-next" onclick="nextStep()" disabled>下一步</button>
+    </div>
+  </div>
+
+  <!-- 步骤3：选择道具类型 -->
+  <div class="panel" data-step="3">
+    <div class="label">选择道具类型</div>
+    <div class="options" id="nadeOptions"></div>
+    <div class="btn-row">
+      <button class="btn btn-prev" onclick="prevStep()">上一步</button>
+      <button class="btn btn-next" onclick="nextStep()" disabled>下一步</button>
+    </div>
+  </div>
+
+  <!-- 步骤4：上传站位图 + 备注 -->
+  <div class="panel" data-step="4">
+    <div class="label">上传站位图</div>
+    <div class="upload-area" id="standArea">
+      <input type="file" accept="image/*" onchange="handleUpload(this,'stand')">
+      <div class="icon">📷</div>
+      <div class="txt">点击上传站位图</div>
+      <div class="fname" id="standName"></div>
+    </div>
+    <img class="preview-img" id="standPreview">
+    <div class="label">站位备注</div>
+    <textarea class="note-input" id="standNote" rows="2" placeholder="输入站位备注..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-prev" onclick="prevStep()">上一步</button>
+      <button class="btn btn-next" onclick="nextStep()" disabled>下一步</button>
+    </div>
+  </div>
+
+  <!-- 步骤5：上传描点图 + 备注 -->
+  <div class="panel" data-step="5">
+    <div class="label">上传描点图</div>
+    <div class="upload-area" id="aimArea">
+      <input type="file" accept="image/*" onchange="handleUpload(this,'aim')">
+      <div class="icon">📷</div>
+      <div class="txt">点击上传描点图</div>
+      <div class="fname" id="aimName"></div>
+    </div>
+    <img class="preview-img" id="aimPreview">
+    <div class="label">描点备注</div>
+    <textarea class="note-input" id="aimNote" rows="2" placeholder="输入描点备注..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-prev" onclick="prevStep()">上一步</button>
+      <button class="btn btn-next" onclick="nextStep()" disabled>下一步</button>
+    </div>
+  </div>
+
+  <!-- 步骤6：上传效果图 -->
+  <div class="panel" data-step="6">
+    <div class="label">上传效果图</div>
+    <div class="upload-area" id="effectArea">
+      <input type="file" accept="image/*" onchange="handleUpload(this,'effect')">
+      <div class="icon">📷</div>
+      <div class="txt">点击上传效果图</div>
+      <div class="fname" id="effectName"></div>
+    </div>
+    <img class="preview-img" id="effectPreview">
+    <div class="btn-row">
+      <button class="btn btn-prev" onclick="prevStep()">上一步</button>
+      <button class="btn btn-next" onclick="nextStep()" disabled>下一步</button>
+    </div>
+  </div>
+
+  <!-- 步骤7：确认 & 生成 -->
+  <div class="panel" data-step="7">
+    <div class="label">卡牌标题</div>
+    <div class="summary" style="margin-bottom:12px">
+      <div class="summary-row"><span class="k">标题格式</span><span class="v" id="titleFormatPreview">请先完成前3步</span></div>
+    </div>
+    <input class="title-input" id="cardTitle" placeholder="输入战术名称...">
+    <div class="label">确认信息</div>
+    <div class="summary" id="summaryBox"></div>
+    <div class="btn-row">
+      <button class="btn btn-prev" onclick="prevStep()">上一步</button>
+      <button class="btn btn-gen" onclick="generate()">生成卡牌</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== 配置 =====
+const MAPS = ['Dust2','Inferno','Mirage','Nuke','Overpass','Ancient','Anubis'];
+const TEAMS = [{label:'T阵营',value:'T',cls:'t0'},{label:'CT阵营',value:'CT',cls:'ct'}];
+const NADES = [{label:'烟雾弹',value:'烟雾弹',cls:'smoke'},{label:'闪光弹',value:'闪光弹',cls:'flash'},{label:'燃烧弹',value:'燃烧弹',cls:'fire'},{label:'手雷',value:'手雷',cls:'he'}];
+const TOTAL_STEPS = 7;
+
+// ===== 状态 =====
+let currentStep = 1;
+let data = {map:'',teamLabel:'',teamValue:'',teamCls:'',nadeLabel:'',nadeValue:'',nadeCls:'',standBase64:'',aimBase64:'',effectBase64:'',standNote:'',aimNote:'',title:'',knowledge:''};
+
+// ===== 初始化选项 =====
+function initOptions(){
+  const mapBox = document.getElementById('mapOptions');
+  MAPS.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'opt-btn'; b.textContent = m;
+    b.onclick = () => selectOption('map', m, b, 'mapOptions');
+    mapBox.appendChild(b);
+  });
+  const teamBox = document.getElementById('teamOptions');
+  TEAMS.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'opt-btn'; b.textContent = t.label;
+    b.onclick = () => { data.teamLabel=t.label; data.teamValue=t.value; data.teamCls=t.cls; selectOption('team',t.value,b,'teamOptions'); };
+    teamBox.appendChild(b);
+  });
+  const nadeBox = document.getElementById('nadeOptions');
+  NADES.forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'opt-btn'; b.textContent = n.label;
+    b.onclick = () => { data.nadeLabel=n.label; data.nadeValue=n.value; data.nadeCls=n.cls; selectOption('nade',n.value,b,'nadeOptions'); };
+    nadeBox.appendChild(b);
+  });
+}
+
+function selectOption(field, value, btn, containerId){
+  document.querySelectorAll('#'+containerId+' .opt-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  data[field] = value;
+  document.querySelector('.panel.active .btn-next').disabled = false;
+}
+
+// ===== 图片上传 =====
+function handleUpload(input, key){
+  const file = input.files[0];
+  if(!file) return;
+  document.getElementById(key+'Name').textContent = file.name + (file.type === 'image/png' ? ' (转换中...)' : '');
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      // 创建 canvas 进行压缩
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      // 转换为 JPEG，质量 0.9
+      const jpegBase64 = canvas.toDataURL('image/jpeg', 0.9);
+      data[key+'Base64'] = jpegBase64;
+      const prev = document.getElementById(key+'Preview');
+      prev.src = jpegBase64;
+      prev.style.display = 'block';
+      document.getElementById(key+'Name').textContent = file.name + (file.type === 'image/png' ? ' (已转JPEG)' : '');
+      document.querySelector('.panel.active .btn-next').disabled = false;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ===== 步骤导航 =====
+function renderSteps(){
+  const bar = document.getElementById('stepsBar');
+  bar.innerHTML = '';
+  for(let i=1;i<=TOTAL_STEPS;i++){
+    if(i>1){
+      const line = document.createElement('div');
+      line.className = 'step-line' + (i<=currentStep?' done':'');
+      bar.appendChild(line);
+    }
+    const dot = document.createElement('div');
+    dot.className = 'step-dot' + (i===currentStep?' active':'') + (i<currentStep?' done':'');
+    dot.textContent = i;
+    bar.appendChild(dot);
+  }
+}
+
+function showPanel(step){
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const target = document.querySelector('.panel[data-step="'+step+'"]');
+  if(target) target.classList.add('active');
+  renderSteps();
+  // 步骤7渲染摘要和标题预览
+  if(step === 7) {
+    renderSummary();
+    updateTitlePreview();
+  }
+}
+
+function updateTitlePreview(){
+  const preview = document.getElementById('titleFormatPreview');
+  if(data.map && data.teamValue && data.nadeLabel){
+    const nadeShort = { '烟雾弹':'烟', '闪光弹':'闪', '燃烧弹':'火', '手雷':'雷' }[data.nadeLabel] || data.nadeLabel;
+    preview.textContent = `${data.map}-${data.teamValue}-${nadeShort}-[战术名称]`;
+  } else {
+    preview.textContent = '请先完成前3步';
+  }
+}
+
+function nextStep(){
+  if(currentStep < TOTAL_STEPS){ currentStep++; showPanel(currentStep); }
+}
+
+function prevStep(){
+  if(currentStep > 1){ currentStep--; showPanel(currentStep); }
+}
+
+// ===== 摘要 =====
+function renderSummary(){
+  const box = document.getElementById('summaryBox');
+  let imgs = '';
+  if(data.standBase64) imgs += '<img src="'+data.standBase64+'" alt="站位">';
+  if(data.aimBase64) imgs += '<img src="'+data.aimBase64+'" alt="描点">';
+  if(data.effectBase64) imgs += '<img src="'+data.effectBase64+'" alt="效果">';
+  box.innerHTML = `
+    <div class="summary-row"><span class="k">地图</span><span class="v">${data.map}</span></div>
+    <div class="summary-row"><span class="k">队伍</span><span class="v">${data.teamLabel}</span></div>
+    <div class="summary-row"><span class="k">道具</span><span class="v">${data.nadeLabel}</span></div>
+    <div class="summary-row"><span class="k">站位备注</span><span class="v">${data.standNote||'-'}</span></div>
+    <div class="summary-row"><span class="k">描点备注</span><span class="v">${data.aimNote||'-'}</span></div>
+    ${imgs ? '<div class="summary-imgs">'+imgs+'</div>' : ''}
+  `;
+}
+
+// ===== 生成卡牌 =====
+function generate(){
+  const customTitle = document.getElementById('cardTitle').value.trim() || '未命名战术';
+  const nadeShort = { '烟雾弹':'烟', '闪光弹':'闪', '燃烧弹':'火', '手雷':'雷' }[data.nadeLabel] || data.nadeLabel;
+  data.title = `${data.map}-${data.teamValue}-${nadeShort}-${customTitle}`;
+  data.standNote = document.getElementById('standNote').value.trim();
+  data.aimNote = document.getElementById('aimNote').value.trim();
+
+  const standImg = data.standBase64
+    ? '<img src="'+data.standBase64+'" alt="站位">'
+    : '<div>📷 站位图 等待上传</div>';
+  const aimImg = data.aimBase64
+    ? '<img src="'+data.aimBase64+'" alt="描点">'
+    : '<div>📷 描点图 等待上传</div>';
+  const effectImg = data.effectBase64
+    ? '<img src="'+data.effectBase64+'" alt="效果图">'
+    : '<div style="height:160px;display:flex;align-items:center;justify-content:center;color:#666;font-size:13px">📷 效果图 等待上传</div>';
+
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>战术卡牌 - ${data.map} ${data.title}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei",sans-serif;background:#0d0d0d;color:#fff;min-height:100vh}
+.h{text-align:center;padding:14px 0;font-size:17px;font-weight:700;color:#ffb300;background:#1a1a1a}
+.c{padding:12px}
+.t{display:inline-block;padding:4px 10px;border-radius:4px;font-size:12px;margin-right:6px;font-weight:700}
+.m{background:#2563eb}.t0{background:#e63946}.ct{background:#457b9d}
+.smoke{background:#4b5563}.flash{background:#3b82f6}.fire{background:#f59e0b}.he{background:#a855f7}
+.n{font-size:20px;font-weight:700;color:#ffdd57;margin:12px 0 16px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.b{background:#1e1e1e;border-radius:10px;overflow:hidden;border:1px solid #333}
+.b img,.b div{width:100%}
+.b div{height:140px;display:flex;align-items:center;justify-content:center;color:#666;font-size:13px}
+.nt{font-size:13px;color:#aaa;padding:8px 10px;background:#1e1e1e;border:1px solid #333;border-top:none;border-radius:0 0 10px 10px}
+.nt b{color:#9ceeff}
+.f{background:#1e1e1e;border-radius:10px;overflow:hidden;border:1px solid #333;margin-bottom:16px}
+.f img{width:100%;height:auto;display:block}
+.ft{text-align:center;font-size:11px;color:#555;padding:16px 0}
+</style>
+</head>
+<body>
+<div class="h">🎯 战术卡牌</div>
+<div class="c">
+<div class="t m">${data.map}</div><span class="t ${data.teamCls}">${data.teamLabel}</span><span class="t ${data.nadeCls}">${data.nadeLabel}</span>
+<div class="n">${data.title}</div>
+<div class="g">
+<div><div class="b">${standImg}</div><div class="nt"><b>站位：</b>${data.standNote||'-'}</div></div>
+<div><div class="b">${aimImg}</div><div class="nt"><b>描点：</b>${data.aimNote||'-'}</div></div>
+</div>
+<div class="f">${effectImg}</div>
+<div class="ft"></div>
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const customName = document.getElementById('cardTitle').value.trim() || '未命名战术';
+  a.download = data.title + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ===== 启动 =====
+initOptions();
+renderSteps();
+</script>
+</body>
+</html>
