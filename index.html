@@ -52,6 +52,13 @@ body{font-family:"Microsoft YaHei",sans-serif;background:#0d0d0d;color:#fff;min-
 .summary-row .v{color:#fff;font-weight:700}
 .summary-imgs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
 .summary-imgs img{width:100%;border-radius:6px;border:1px solid #333}
+.custom-map-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.custom-map-row .opt-btn{text-align:left}
+.custom-map-row .edit-btn,.custom-map-row .del-btn{padding:10px 12px;border-radius:6px;border:none;font-size:14px;cursor:pointer;flex-shrink:0}
+.custom-map-row .edit-btn{background:#333;color:#888}
+.custom-map-row .edit-btn:hover{background:#444;color:#fff}
+.custom-map-row .del-btn{background:#333;color:#888}
+.custom-map-row .del-btn:hover{background:#e63946;color:#fff}
 </style>
 </head>
 <body>
@@ -63,6 +70,10 @@ body{font-family:"Microsoft YaHei",sans-serif;background:#0d0d0d;color:#fff;min-
   <div class="panel active" data-step="1">
     <div class="label">选择地图</div>
     <div class="options" id="mapOptions"></div>
+    <div class="custom-map-row">
+      <input class="note-input" id="customMapInput" placeholder="输入自定义地图名称..." style="margin-bottom:8px">
+      <button class="btn btn-next" onclick="addCustomMap()" style="flex:1">添加地图</button>
+    </div>
     <div class="btn-row">
       <button class="btn btn-next" onclick="nextStep()" disabled>下一步</button>
     </div>
@@ -159,24 +170,19 @@ body{font-family:"Microsoft YaHei",sans-serif;background:#0d0d0d;color:#fff;min-
 
 <script>
 // ===== 配置 =====
-const MAPS = ['Dust2','Inferno','Mirage','Nuke','Overpass','Ancient','Anubis'];
+const DEFAULT_MAPS = ['Dust2','Inferno','Mirage','Nuke','Overpass','Ancient','Anubis','Train','Vertigo','Cache'];
 const TEAMS = [{label:'T阵营',value:'T',cls:'t0'},{label:'CT阵营',value:'CT',cls:'ct'}];
 const NADES = [{label:'烟雾弹',value:'烟雾弹',cls:'smoke'},{label:'闪光弹',value:'闪光弹',cls:'flash'},{label:'燃烧弹',value:'燃烧弹',cls:'fire'},{label:'手雷',value:'手雷',cls:'he'}];
 const TOTAL_STEPS = 7;
 
 // ===== 状态 =====
 let currentStep = 1;
+let customMaps = JSON.parse(localStorage.getItem('customMaps')) || [];
 let data = {map:'',teamLabel:'',teamValue:'',teamCls:'',nadeLabel:'',nadeValue:'',nadeCls:'',standBase64:'',aimBase64:'',effectBase64:'',standNote:'',aimNote:'',title:'',knowledge:''};
 
 // ===== 初始化选项 =====
 function initOptions(){
-  const mapBox = document.getElementById('mapOptions');
-  MAPS.forEach(m => {
-    const b = document.createElement('button');
-    b.className = 'opt-btn'; b.textContent = m;
-    b.onclick = () => selectOption('map', m, b, 'mapOptions');
-    mapBox.appendChild(b);
-  });
+  renderMaps();
   const teamBox = document.getElementById('teamOptions');
   TEAMS.forEach(t => {
     const b = document.createElement('button');
@@ -191,6 +197,99 @@ function initOptions(){
     b.onclick = () => { data.nadeLabel=n.label; data.nadeValue=n.value; data.nadeCls=n.cls; selectOption('nade',n.value,b,'nadeOptions'); };
     nadeBox.appendChild(b);
   });
+}
+
+// ===== 地图相关 =====
+function renderMaps(){
+  const mapBox = document.getElementById('mapOptions');
+  mapBox.innerHTML = '';
+  // 预设地图
+  DEFAULT_MAPS.forEach(m => {
+    const item = createMapItem(m, false);
+    mapBox.appendChild(item);
+  });
+  // 自定义地图
+  customMaps.forEach((m, i) => {
+    const item = createMapItem(m, true, i);
+    mapBox.appendChild(item);
+  });
+}
+
+function createMapItem(name, isCustom, index){
+  var wrapper = document.createElement('div');
+  wrapper.className = 'map-item-row';
+  
+  var btn = document.createElement('button');
+  btn.className = 'opt-btn map-btn' + (data.map === name ? ' selected' : '');
+  btn.textContent = name;
+  btn.setAttribute('data-map', name);
+  btn.onclick = function(){
+    data.map = name;
+    var btns = document.querySelectorAll('#mapOptions .opt-btn');
+    for(var i=0;i<btns.length;i++){ btns[i].classList.remove('selected'); }
+    this.classList.add('selected');
+    var nextBtn = document.querySelector('.panel.active .btn-next');
+    if(nextBtn){ nextBtn.disabled = false; }
+  };
+  
+  wrapper.appendChild(btn);
+  
+  if(isCustom){
+    var editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn';
+    editBtn.textContent = '✏';
+    editBtn.onclick = function(){ editMap(index); };
+    wrapper.appendChild(editBtn);
+    
+    var delBtn = document.createElement('button');
+    delBtn.className = 'del-btn';
+    delBtn.textContent = 'x';
+    delBtn.onclick = function(){ deleteMap(index); };
+    wrapper.appendChild(delBtn);
+  }
+  
+  return wrapper;
+}
+
+function addCustomMap(){
+  const input = document.getElementById('customMapInput');
+  const name = input.value.trim();
+  if(!name){ alert('请输入地图名称'); return; }
+  if(DEFAULT_MAPS.includes(name) || customMaps.includes(name)){
+    alert('该地图已存在'); return;
+  }
+  customMaps.push(name);
+  localStorage.setItem('customMaps', JSON.stringify(customMaps));
+  renderMaps();
+  input.value = '';
+  // 自动选中新添加的地图
+  data.map = name;
+  document.querySelectorAll('#mapOptions .opt-btn').forEach(b=>{
+    b.classList.toggle('selected', b.textContent === name);
+  });
+  document.querySelector('.panel.active .btn-next').disabled = false;
+}
+
+function editMap(index){
+  const oldName = customMaps[index];
+  const newName = prompt('修改地图名称：', oldName);
+  if(!newName || newName === oldName) return;
+  if(DEFAULT_MAPS.includes(newName) || customMaps.includes(newName)){
+    alert('该地图已存在'); return;
+  }
+  customMaps[index] = newName;
+  localStorage.setItem('customMaps', JSON.stringify(customMaps));
+  if(data.map === oldName) data.map = newName;
+  renderMaps();
+}
+
+function deleteMap(index){
+  const name = customMaps[index];
+  if(!confirm('确定删除地图 "' + name + '"？')) return;
+  customMaps.splice(index, 1);
+  localStorage.setItem('customMaps', JSON.stringify(customMaps));
+  if(data.map === name) data.map = '';
+  renderMaps();
 }
 
 function selectOption(field, value, btn, containerId){
